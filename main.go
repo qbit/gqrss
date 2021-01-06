@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -13,6 +14,9 @@ import (
 	"github.com/gorilla/feeds"
 	"suah.dev/protect"
 )
+
+var search string
+var prefix string
 
 // GQLQuery is what github wants in the POST request.
 type GQLQuery struct {
@@ -73,7 +77,7 @@ type Data struct {
 const endPoint = "https://api.github.com/graphql"
 const ghQuery = `
 {
-  search(first: 100, type: ISSUE, query: "state:open openbsd") {
+  search(first: 100, type: ISSUE, query: "state:open %s") {
     issueCount
     pageInfo {
       hasNextPage
@@ -138,9 +142,9 @@ func getData(q GQLQuery) (re *GHResp, err error) {
 
 func makeRSS(q *GHResp) {
 	feed := &feeds.Feed{
-		Title:       "OpenBSD GitHub Issues",
+		Title:       fmt.Sprintf("%s GitHub Issues", search),
 		Link:        &feeds.Link{Href: "https://github.com/qbit/gqrss"},
-		Description: "Open GitHub issues relating to OpenBSD",
+		Description: fmt.Sprintf("Open GitHub issues relating to %s", search),
 		Author:      &feeds.Author{Name: "Aaron Bieber", Email: "aaron@bolddaemon.com"},
 		Copyright:   "This work is copyright © Aaron Bieber",
 	}
@@ -163,12 +167,12 @@ func makeRSS(q *GHResp) {
 		feed.Items = append(feed.Items, f)
 	}
 
-	atomFile, err := os.Create("atom.xml")
+	atomFile, err := os.Create(fmt.Sprintf("%satom.xml", prefix))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	rssFile, err := os.Create("rss.xml")
+	rssFile, err := os.Create(fmt.Sprintf("%srss.xml", prefix))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -178,6 +182,9 @@ func makeRSS(q *GHResp) {
 }
 
 func main() {
+	flag.StringVar(&search, "search", "OpenBSD", "thing to search GitHub for")
+	flag.StringVar(&prefix, "prefix", "", "prefix to prepend to file names")
+	flag.Parse()
 	protect.Unveil("./", "rwc")
 	protect.Unveil("/etc/ssl/cert.pem", "r")
 	protect.Pledge("stdio unveil rpath wpath cpath flock dns inet")
@@ -185,7 +192,7 @@ func main() {
 	protect.UnveilBlock()
 
 	var q GQLQuery
-	q.Query = ghQuery
+	q.Query = fmt.Sprintf(ghQuery, search)
 
 	resp, err := getData(q)
 	if err != nil {
