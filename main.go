@@ -177,19 +177,32 @@ func makeRSS(q *GHResp) {
 		log.Fatal(err)
 	}
 
-	feed.WriteAtom(atomFile)
-	feed.WriteRss(rssFile)
+	err = feed.WriteAtom(atomFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = feed.WriteRss(rssFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func dieOnErr(err error) {
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 
 func main() {
 	flag.StringVar(&search, "search", "OpenBSD", "thing to search GitHub for")
 	flag.StringVar(&prefix, "prefix", "", "prefix to prepend to file names")
 	flag.Parse()
-	protect.Unveil("./", "rwc")
-	protect.Unveil("/etc/ssl/cert.pem", "r")
-	protect.Pledge("stdio unveil rpath wpath cpath flock dns inet")
 
-	protect.UnveilBlock()
+	dieOnErr(protect.Unveil("./", "rwc"))
+	dieOnErr(protect.Unveil("/etc/ssl/cert.pem", "r"))
+	dieOnErr(protect.Pledge("stdio unveil rpath wpath cpath flock dns inet"))
+
+	dieOnErr(protect.UnveilBlock())
 
 	var q GQLQuery
 	q.Query = fmt.Sprintf(ghQuery, search)

@@ -1,6 +1,6 @@
 # [gqrss](https://github.com/qbit/gqrss)
 
-A tool to query and display GitHub issues relating to OpenBSD.
+A tool to query and display GitHub issues relating to anything you want.
 
 ## Libraries used
 
